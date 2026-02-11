@@ -54,13 +54,32 @@ else:
             st.write(f"**Kategorie:** {news['Kategorie']}")
             st.write(news['Inhalt'])
 
-# 6. Beispiel Chart (Holzpreise)
+# 6. Preis-Chart (Fokus auf Rundholz)
 st.divider()
-st.header("📈 Preisentwicklung (KVH vs. Rohholz)")
-chart_data = pd.DataFrame({
-    'Woche': ['KW03', 'KW04', 'KW05', 'KW06'],
-    'KVH': [420, 425, 438, 445],
-    'Rohholz': [95, 98, 102, 105]
+st.header("📈 Marktpreis Rundholz (Fichte/Kiefer)")
+
+# Hier trägst du deine aktuellen Preise ein (€ pro Festmeter)
+rundholz_daten = pd.DataFrame({
+    'Woche': ['KW03', 'KW04', 'KW05', 'KW06', 'KW07'],
+    'Rundholz Preis (€/fm)': [95, 98, 102, 105, 108] 
 })
-fig = px.line(chart_data, x='Woche', y=['KVH', 'Rohholz'], markers=True)
+
+fig = px.line(
+    rundholz_daten, 
+    x='Woche', 
+    y='Rundholz Preis (€/fm)', 
+    markers=True,
+    title="Entwicklung Rundholz-Leitpreis (Sortiment 2b+)",
+    line_shape="spline",
+    color_discrete_sequence=['#8B4513'] # Holz-Braun
+)
+
+# Design-Feinschliff
+fig.update_layout(
+    yaxis_title="Preis in € pro Festmeter", 
+    xaxis_title="Kalenderwoche",
+    plot_bgcolor="rgba(0,0,0,0)"
+)
+
 st.plotly_chart(fig, use_container_width=True)
+
