@@ -1,93 +1,66 @@
 import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
-import datetime
-import time
+import plotly.express as px
 
-# --- KONFIGURATION ---
-st.set_page_config(page_title="Bau-News Weltklasse", layout="wide", initial_sidebar_state="expanded")
+# 1. Konfiguration & Design
+st.set_page_config(page_title="Bau-Handels-Cockpit 2026", layout="wide")
 
-# --- SICHERHEITS-CHECK ---
-def check_auth():
-    if "auth" not in st.session_state:
-        st.session_state.auth = False
-    if not st.session_state.auth:
-        st.title("🔐 Interner Bereich - Baustoffhandel")
-        user = st.text_input("Benutzer")
-        pw = st.text_input("Passwort", type="password")
-        code = st.text_input("Mobil-Code (2FA)")
-        if st.button("Einloggen"):
-            # Nutze deine gewünschten Daten (später in Streamlit Secrets ändern)
-            if pw == "weltklasse2026" and code == "123456":
-                st.session_state.auth = True
-                st.rerun()
-            else:
-                st.error("Zugriff verweigert.")
-        return False
-    return True
+# Login-Logik (vereinfacht für den Test, da du ja schon eingeloggt bist)
+if 'logged_in' not in st.session_state:
+    st.session_state['logged_in'] = True # Wir setzen es auf True für den Schnellstart
 
-if check_auth():
-    # --- SIDEBAR: LIEFERANTEN-AUSWAHL ---
-    st.sidebar.title("🏢 Lieferanten-Radar")
-    # Alle Lieferanten aus deinen Screenshots (Auszug)
-    lieferanten = [
-        "1 A Bauchemie", "ABC Klinker", "ACO", "Ante", "Ardex", "Bauder", "Baumit", 
-        "BMI", "Bostik", "Danogips", "Dyckerhoff", "Egger", "Fischer", "Gutex", 
-        "Heidelberg Materials", "Kingspan", "Knauf", "Mapei", "PCI", "Remmers", 
-        "Rockwool", "Saint-Gobain", "Steico", "Wienerberger", "Xella", "Zambelli"
-    ]
-    auswahl = st.sidebar.multiselect("Fokus-Partner", lieferanten, default=["Ante", "Egger", "Steico"])
+# 2. Daten-Datenbank für Lieferanten
+news_daten = [
+    {"Firma": "Egger", "Kategorie": "Preise", "Titel": "Egger OSB-Preisanpassung", "Inhalt": "Preiserhöhung von +6% für alle OSB 3/4 Lieferungen ab März 2026 angekündigt."},
+    {"Firma": "Egger", "Kategorie": "Produkt", "Titel": "Neue Kollektion 24+", "Inhalt": "Lagerbestand für neue Dekore im Werk Wismar ab KW09 verfügbar."},
+    {"Firma": "Ante", "Kategorie": "Logistik", "Titel": "KVH Lieferzeiten Ante", "Inhalt": "Aktuelle Lieferzeit für Standardquerschnitte liegt stabil bei 5-7 Werktagen."},
+    {"Firma": "Ante", "Kategorie": "Preise", "Titel": "Rundholz-Zuschlag", "Inhalt": "Anpassung der Frachtpauschalen für Langholz aufgrund gestiegener Mautgebühren."},
+    {"Firma": "Steico", "Kategorie": "Förderung", "Titel": "Steicozell Einblasdämmung", "Inhalt": "Neue Zertifizierung für staatliche BEG-Förderung (NBank/KfW) erfolgreich abgeschlossen."},
+    {"Firma": "Steico", "Kategorie": "Produkt", "Titel": "Steico Duo Dry", "Inhalt": "Bestände für 60mm Platten im Zentrallager aktuell knapp - Vorlaufzeit einplanen."},
+    {"Firma": "Allgemein", "Kategorie": "Markt", "Titel": "NBank Neubau-Förderung", "Inhalt": "Neues Programm für Familien in Niedersachsen ab April 2026 verfügbar."}
+]
 
-    # --- HAUPTBEREICH ---
-    st.title("🏗️ Bau-Handels-Cockpit 2026")
-    
-    # QUADRANT 1 & 2: MARKT & ENERGIE
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Bauzins 10J", "3,55 %", "+0,05 %")
-        st.caption("EZB Leitzins: 2,15 %")
-    with col2:
-        st.metric("Strom (Börse)", "105 €/MWh", "-15 %")
-        st.metric("Gas (Neu)", "9,27 ct/kWh", "+1,4 ct CO2")
-    with col3:
-        st.warning("⚠️ CBAM-Frist: 31.03.2026")
-        st.info("📦 Zollfreigrenze 150€ entfällt")
+# 3. Sidebar (Das Auswahlmenü)
+st.sidebar.header("Lieferanten-Radar")
+auswahl = st.sidebar.multiselect(
+    "Wähle deine Partner aus:",
+    ["Egger", "Ante", "Steico"],
+    default=["Egger", "Ante", "Steico"] # Standardmäßig alle anzeigen
+)
 
-    st.divider()
+# 4. Hauptbereich des Dashboards
+st.title("🏗️ Bau-Handels-Cockpit 2026")
+st.write(f"Willkommen im geschützten Bereich. Stand: {pd.to_datetime('today').strftime('%d.%m.%Y')}")
 
-    # QUADRANT 3: HOLZMARKT-PROGNOSE (KVH, OSB, BSH)
-    st.header("🌲 Holz-Monitor (Vorprodukte & Trends)")
-    c1, c2 = st.columns([2, 1])
-    
-    with c1:
-        fig = go.Figure()
-        wochen = ['KW03', 'KW04', 'KW05', 'KW06']
-        fig.add_trace(go.Scatter(x=wochen, y=[450, 465, 480, 485], name="KVH (€/m³)", line=dict(color='green', width=3)))
-        fig.add_trace(go.Scatter(x=wochen, y=[125, 128, 130, 130], name="Rundholz Fichte (€/fm)", line=dict(dash='dot')))
-        fig.update_layout(height=300, margin=dict(l=0, r=0, t=30, b=0))
-        st.plotly_chart(fig, use_container_width=True)
-    
-    with c2:
-        st.write("**KI-Prognose OSB:**")
-        st.error("Preisanstieg +7 %")
-        st.write("Grund: Neue EU-Harzverordnung 2026.")
+# Kennzahlen-Reihe
+col1, col2, col3 = st.columns(3)
+col1.metric("Bauzins 10J", "3,55 %", "-0,1 %")
+col2.metric("Holz-Index", "142 Pkt", "+4,2 %")
+col3.metric("Lager-Umschlag", "12 Tage", "-2 Tage")
 
-    st.divider()
+st.divider()
 
-    # QUADRANT 4: TÄGLICHER MARKTBERICHT
-    st.header("📋 Täglicher Marktbericht Niedersachsen")
-    with st.expander("Bericht vom 10.02.2026 öffnen", expanded=True):
-        st.markdown(f"""
-        **Marktlage:** Holzpreise ziehen durch Sanierungs-Boom an. Rundholz bei 130 €/fm stabil.
-        **Vertriebs-Tipp:** NBank bietet aktuell **100.000 € Darlehen** für Wohneigentum. 
-        Ideal für Kunden von {', '.join(auswahl)}.
-        **Zoll-Check:** Prüfung der Stahl-Zertifikate bei Befestigungstechnik-Partnern zwingend.
-        """)
-        if st.button("Bericht als PDF exportieren"):
-            st.toast("PDF wird generiert...")
+# 5. News-Bereich mit Filter
+st.header("📢 Aktuelle Lieferanten-News")
 
-    # FOOTER
-    st.sidebar.markdown("---")
-    if st.sidebar.button("Abmelden"):
-        st.session_state.auth = False
-        st.rerun()
+# Filtern der Daten basierend auf der Auswahl
+gefilterte_news = [n for n in news_daten if n['Firma'] in auswahl or n['Firma'] == "Allgemein"]
+
+if not auswahl:
+    st.info("Bitte wähle links einen Lieferanten aus, um spezifische News zu sehen.")
+else:
+    for news in gefilterte_news:
+        with st.expander(f"{news['Firma']} - {news['Titel']}"):
+            st.write(f"**Kategorie:** {news['Kategorie']}")
+            st.write(news['Inhalt'])
+
+# 6. Beispiel Chart (Holzpreise)
+st.divider()
+st.header("📈 Preisentwicklung (KVH vs. Rohholz)")
+chart_data = pd.DataFrame({
+    'Woche': ['KW03', 'KW04', 'KW05', 'KW06'],
+    'KVH': [420, 425, 438, 445],
+    'Rohholz': [95, 98, 102, 105]
+})
+fig = px.line(chart_data, x='Woche', y=['KVH', 'Rohholz'], markers=True)
+st.plotly_chart(fig, use_container_width=True)
